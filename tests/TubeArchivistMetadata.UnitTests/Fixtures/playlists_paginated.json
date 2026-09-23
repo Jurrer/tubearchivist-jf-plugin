@@ -1,0 +1,37 @@
+{
+  "data": [
+    {
+      "playlist_active": true,
+      "playlist_channel": "Fireship",
+      "playlist_channel_id": "UCsBjURrPoezykLs9EqgamOA",
+      "playlist_description": "desc1",
+      "playlist_entries": [],
+      "playlist_id": "PLaaa",
+      "playlist_name": "First Playlist",
+      "playlist_thumbnail": "https://yt.i.szop.top/playlists/PLaaa.jpg",
+      "playlist_type": "regular"
+    },
+    {
+      "playlist_active": true,
+      "playlist_channel": "",
+      "playlist_channel_id": "",
+      "playlist_description": "custom desc",
+      "playlist_entries": [],
+      "playlist_id": "PLbbb",
+      "playlist_name": "Custom Playlist",
+      "playlist_thumbnail": "https://yt.i.szop.top/playlists/PLbbb.jpg",
+      "playlist_type": "custom"
+    }
+  ],
+  "paginate": {
+    "page_size": 25,
+    "page_from": 0,
+    "prev_pages": [],
+    "current_page": 1,
+    "max_hits": false,
+    "params": "abcd",
+    "last_page": 2,
+    "next_pages": [2],
+    "total_hits": 43
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "active": true,
+  "title": "Test Video Title",
+  "description": "Line one\nLine two",
+  "published": "2025-08-04T00:00:00Z",
+  "vid_thumb_url": "https://yt.i.szop.top/videos/abc123.jpg",
+  "youtube_id": "abc123video",
+  "tags": ["tag1", "tag2", "tag3"],
+  "channel": {
+    "channel_banner_url": "https://yt.i.szop.top/channels/UCbanner.jpg",
+    "channel_description": "A test channel\nwith newline",
+    "channel_id": "UCsBjURrPoezykLs9EqgamOA",
+    "channel_name": "Fireship",
+    "channel_tags": ["ctag1", "ctag2"],
+    "channel_thumb_url": "https://yt.i.szop.top/channels/UCthumb.jpg",
+    "channel_tvart_url": "https://yt.i.szop.top/channels/UCart.jpg"
+  },
+  "player": {
+    "watched": false,
+    "duration": 300,
+    "position": 0
+  }
+}

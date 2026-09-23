@@ -4,3 +4,9 @@ obj/
 .idea/
 artifacts
 nuget.config
+
+# Python venv + test caches
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc

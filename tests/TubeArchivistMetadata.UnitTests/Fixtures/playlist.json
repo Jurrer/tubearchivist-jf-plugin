@@ -1,0 +1,26 @@
+{
+  "playlist_active": true,
+  "playlist_channel": "Fireship",
+  "playlist_channel_id": "UCsBjURrPoezykLs9EqgamOA",
+  "playlist_description": "A test playlist",
+  "playlist_entries": [
+    {
+      "youtube_id": "vid1",
+      "title": "First Video",
+      "uploader": "Fireship",
+      "idx": 0,
+      "downloaded": true
+    },
+    {
+      "youtube_id": "vid2",
+      "title": "Second Video",
+      "uploader": "Fireship",
+      "idx": 1,
+      "downloaded": false
+    }
+  ],
+  "playlist_id": "PL12345abc",
+  "playlist_name": "Test Playlist",
+  "playlist_thumbnail": "https://yt.i.szop.top/playlists/PL12345.jpg",
+  "playlist_type": "regular"
+}

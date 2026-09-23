@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.TubeArchivistMetadata", "Jellyfin.Plugin.TubeArchivistMetadata\Jellyfin.Plugin.TubeArchivistMetadata.csproj", "{7A112ACB-79E8-4FC9-BCF6-B3AC849DA2D4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TubeArchivistMetadata.UnitTests", "tests\TubeArchivistMetadata.UnitTests\TubeArchivistMetadata.UnitTests.csproj", "{B1C7E2D4-3A5F-4B6C-9D8E-1F2A3B4C5D6E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{7A112ACB-79E8-4FC9-BCF6-B3AC849DA2D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A112ACB-79E8-4FC9-BCF6-B3AC849DA2D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7A112ACB-79E8-4FC9-BCF6-B3AC849DA2D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1C7E2D4-3A5F-4B6C-9D8E-1F2A3B4C5D6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1C7E2D4-3A5F-4B6C-9D8E-1F2A3B4C5D6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1C7E2D4-3A5F-4B6C-9D8E-1F2A3B4C5D6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1C7E2D4-3A5F-4B6C-9D8E-1F2A3B4C5D6E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
