@@ -109,8 +109,52 @@ def update_user_data(token: str, user_id: str, item_id: str, data: dict[str, Any
     return resp.json() if resp.content else {}
 
 
+def mark_played(token: str, user_id: str, item_id: str) -> dict[str, Any]:
+    """Mark an item played via /UserPlayedItems (propagates to children for folders)."""
+    resp = requests.post(
+        f"{JF_URL}/UserPlayedItems/{item_id}",
+        params={"userId": user_id},
+        headers=_auth_header(token),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json() if resp.content else {}
+
+
+def mark_unplayed(token: str, user_id: str, item_id: str) -> dict[str, Any]:
+    """Mark an item unplayed via DELETE /UserPlayedItems (propagates to children for folders)."""
+    resp = requests.delete(
+        f"{JF_URL}/UserPlayedItems/{item_id}",
+        params={"userId": user_id},
+        headers=_auth_header(token),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json() if resp.content else {}
+
+
 def report_playback_progress(token: str, user_id: str, item_id: str, position_ticks: int) -> None:
-    """Report playback progress to trigger OnPlaybackProgress."""
+    """Report playback progress to trigger OnPlaybackProgress.
+
+    A /Sessions/Playing (playback start) call is needed first to establish an
+    active session in SessionManager — OnPlaybackProgress bails out if no
+    session exists for the request (GetSession returns null → early return,
+    PlaybackProgress event never fires, plugin never sees it).
+    """
+    start_data = {
+        "ItemId": item_id,
+        "PositionTicks": 0,
+        "IsPaused": True,
+        "PlayMethod": "DirectStream",
+    }
+    resp = requests.post(
+        f"{JF_URL}/Sessions/Playing",
+        headers=_auth_header(token),
+        data=json.dumps(start_data),
+        timeout=10,
+    )
+    resp.raise_for_status()
+
     data = {
         "ItemId": item_id,
         "PositionTicks": position_ticks,
