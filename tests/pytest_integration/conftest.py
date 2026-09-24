@@ -266,7 +266,7 @@ def cleanup(ta_token: str, admin_token: str) -> Any:
     def register(fn: Callable[[], None]) -> None:
         callbacks.append(fn)
 
-    registry = type("CleanupRegistry", (), {"register": register})()
+    registry = type("CleanupRegistry", (), {"register": staticmethod(register)})()
     yield registry
 
     for fn in reversed(callbacks):

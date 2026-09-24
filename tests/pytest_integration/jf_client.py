@@ -18,15 +18,26 @@ ADMIN_PASS = "verysecure"
 TEST_USER = "test user"
 TEST_PASS = "verystrong"
 
-CLIENT_HEADER = (
-    'MediaBrowser Client="TAMetaTests", Device="test", '
-    'DeviceId="tameta-test-runner", Version="1.0.0"'
-)
+_DEFAULT_DEVICE_ID = "tameta-test-runner"
+_token_device_ids: dict[str, str] = {}
+
+
+def _device_id_for_user(user: str) -> str:
+    return "tameta-" + user.replace(" ", "-").lower()
 
 
 def _auth_header(token: str | None = None, user: str | None = None, pw: str | None = None) -> dict[str, str]:
     """Build the X-Emby-Authorization header, with optional token."""
-    header = CLIENT_HEADER
+    if token and token in _token_device_ids:
+        device_id = _token_device_ids[token]
+    elif user:
+        device_id = _device_id_for_user(user)
+    else:
+        device_id = _DEFAULT_DEVICE_ID
+    header = (
+        f'MediaBrowser Client="TAMetaTests", Device="test", '
+        f'DeviceId="{device_id}", Version="1.0.0"'
+    )
     if token:
         header += f', Token="{token}"'
     if user:
@@ -43,7 +54,9 @@ def authenticate(user: str, pw: str) -> str:
         timeout=10,
     )
     resp.raise_for_status()
-    return resp.json()["AccessToken"]
+    token = resp.json()["AccessToken"]
+    _token_device_ids[token] = _device_id_for_user(user)
+    return token
 
 
 def get_users(token: str) -> list[dict[str, Any]]:

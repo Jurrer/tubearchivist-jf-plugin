@@ -124,6 +124,13 @@ def get_progress(token: str, video_id: str) -> dict[str, Any]:
     return resp.json()
 
 
+def delete_progress(token: str, video_id: str) -> None:
+    """Delete playback progress for a video (the only reliable reset — set_progress(0) is a no-op)."""
+    resp = requests.delete(f"{TA_URL}/api/video/{video_id}/progress/", headers=_headers(token), timeout=10)
+    if resp.status_code not in (200, 204, 404):
+        resp.raise_for_status()
+
+
 def set_watched(token: str, item_id: str, watched: bool) -> None:
     resp = requests.post(
         f"{TA_URL}/api/watched/",
