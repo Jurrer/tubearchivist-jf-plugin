@@ -274,3 +274,53 @@ def cleanup(ta_token: str, admin_token: str) -> Any:
             fn()
         except Exception as e:
             print(f"cleanup callback failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Config override context manager (function-scoped fixture)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def config_override() -> Any:
+    """Returns a context manager that temporarily overrides plugin config XML values.
+
+    Usage:
+        with config_override(TAJFProgressSync="false"):
+            # JF has been restarted with TAJFProgressSync=false
+            ...
+        # Original config restored, JF restarted
+
+    Restarts JF on enter and on exit. Each restart takes ~30-90s.
+    """
+    from contextlib import contextmanager
+    import re
+
+    @contextmanager
+    def _override(**overrides: str):
+        original = CONFIG_XML.read_text()
+        modified = original
+        for key, value in overrides.items():
+            modified = re.sub(
+                rf"<{key}>[^<]*</{key}>",
+                f"<{key}>{value}</{key}>",
+                modified,
+            )
+        CONFIG_XML.write_text(modified)
+        _restart_jf()
+        try:
+            yield
+        finally:
+            CONFIG_XML.write_text(original)
+            _restart_jf()
+
+    return _override
+
+
+# ---------------------------------------------------------------------------
+# JF log helper (function-scoped fixture)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def jf_logs() -> Callable[[int], str]:
+    """Return a function that fetches recent JF container logs."""
+    return jf_client.get_jf_logs

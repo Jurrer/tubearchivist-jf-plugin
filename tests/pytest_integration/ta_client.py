@@ -116,14 +116,6 @@ def set_progress(token: str, video_id: str, position: int) -> None:
     resp.raise_for_status()
 
 
-def get_progress(token: str, video_id: str) -> dict[str, Any]:
-    resp = requests.get(f"{TA_URL}/api/video/{video_id}/progress/", headers=_headers(token), timeout=10)
-    if resp.status_code == 404:
-        return {}
-    resp.raise_for_status()
-    return resp.json()
-
-
 def delete_progress(token: str, video_id: str) -> None:
     """Delete playback progress for a video (the only reliable reset — set_progress(0) is a no-op)."""
     resp = requests.delete(f"{TA_URL}/api/video/{video_id}/progress/", headers=_headers(token), timeout=10)
@@ -178,3 +170,38 @@ def custom_playlist_action(token: str, playlist_id: str, action: str, video_id: 
         timeout=10,
     )
     resp.raise_for_status()
+
+
+def get_playlist_entries(token: str, playlist_id: str) -> list[dict[str, Any]]:
+    """Return the entries of a TA playlist (playlist_entries field)."""
+    pl = get_playlist(token, playlist_id)
+    return pl.get("playlist_entries", [])
+
+
+def get_all_playlist_ids(token: str) -> list[str]:
+    """Return all TA playlist IDs across all pages."""
+    playlists = get_all_playlists(token)
+    return [pl.get("playlist_id") for pl in playlists if pl.get("playlist_id")]
+
+
+def get_custom_playlist_action(token: str, playlist_id: str, action: str, video_id: str) -> int:
+    """Execute a custom playlist entry action and return the HTTP status code."""
+    resp = requests.post(
+        f"{TA_URL}/api/playlist/custom/{playlist_id}/",
+        headers=_headers(token),
+        data=json.dumps({"action": action, "video_id": video_id}),
+        timeout=10,
+    )
+    return resp.status_code
+
+
+def create_custom_playlist_named(token: str, name: str) -> dict[str, Any]:
+    """Create a custom playlist via the custom endpoint and return the response."""
+    resp = requests.post(
+        f"{TA_URL}/api/playlist/custom/",
+        headers=_headers(token),
+        data=json.dumps({"playlist_name": name}),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()

@@ -298,3 +298,71 @@ def image_resolves(item_id: str, image_type: str = "Primary", token: str | None 
     headers = _auth_header(token) if token else {}
     resp = requests.get(f"{JF_URL}/Items/{item_id}/Images/{image_type}", headers=headers, timeout=10, stream=True)
     return resp.status_code
+
+
+def get_task_id_by_name(token: str, name: str) -> str | None:
+    """Find a scheduled task ID by its Name field."""
+    for t in get_scheduled_tasks(token):
+        if t.get("Name") == name:
+            return t.get("Id")
+    return None
+
+
+def get_jf_logs(lines: int = 500) -> str:
+    """Return recent JF container logs (stdout + stderr)."""
+    import subprocess
+
+    result = subprocess.run(
+        ["docker", "logs", "jf-plugin-dev", "--tail", str(lines)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return result.stdout + result.stderr
+
+
+def get_playlist_by_name(token: str, user_id: str, name: str) -> dict[str, Any] | None:
+    """Find a JF playlist by exact name."""
+    for pl in get_playlists(token, user_id):
+        if pl.get("Name") == name:
+            return pl
+    return None
+
+
+def get_episodes_with_provider_id(token: str, collection_id: str) -> list[dict[str, Any]]:
+    """Return episodes in a collection that have a TubeArchivist provider id."""
+    items = get_items(
+        token,
+        parent_id=collection_id,
+        Recursive=True,
+        IncludeItemTypes="Episode",
+        Fields="ProviderIds,Path",
+    )
+    return [
+        ep for ep in items.get("Items", [])
+        if ep.get("ProviderIds", {}).get("TubeArchivist")
+    ]
+
+
+def add_to_playlist(token: str, playlist_id: str, item_ids: list[str]) -> None:
+    """Add items to an existing JF playlist."""
+    resp = requests.post(
+        f"{JF_URL}/Playlists/{playlist_id}/Items",
+        headers=_auth_header(token),
+        params={"ids": ",".join(item_ids)},
+        timeout=10,
+    )
+    resp.raise_for_status()
+
+
+def remove_from_playlist(token: str, playlist_id: str, item_ids: list[str]) -> None:
+    """Remove items from a JF playlist."""
+    for item_id in item_ids:
+        resp = requests.delete(
+            f"{JF_URL}/Playlists/{playlist_id}/Items",
+            headers=_auth_header(token),
+            params={"entryIds": item_id},
+            timeout=10,
+        )
+        if resp.status_code not in (200, 204):
+            resp.raise_for_status()
