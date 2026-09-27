@@ -2,7 +2,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using Jellyfin.Plugin.TubeArchivistMetadata;
+using Jellyfin.Plugin.TubeArchivistMetadata.Configuration;
 using Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Entities;
@@ -16,6 +19,7 @@ namespace TubeArchivistMetadata.UnitTests;
 /// Unit tests for the TA→Jellyfin mappers: Video.ToEpisode, Video.ToSearchResult,
 /// Channel.ToSeries, Channel.ToSearchResult, and the NumberingScheme.YYYYMMDD branch.
 /// Tests run with Plugin.Instance == null, so IndexNumber falls back to null (Default scheme).
+/// The YYYYMMDD end-to-end test uses reflection to inject a Plugin.Instance with the scheme set.
 /// </summary>
 public class MapperTests
 {
@@ -215,5 +219,59 @@ public class MapperTests
     public void YyyyMmDd_Numbering_ComputesCorrectly(int year, int month, int day, int expected)
     {
         Assert.Equal(expected, (year * 10000) + (month * 100) + day);
+    }
+
+    /// <summary>
+    /// Exercises the NumberingScheme.YYYYMMDD branch in Video.ToEpisode() end-to-end.
+    /// Uses reflection to inject a Plugin.Instance with the scheme set, since the
+    /// Plugin constructor requires Jellyfin infrastructure not available in unit tests.
+    /// </summary>
+    [Fact]
+    public void Video_ToEpisode_YyyyMmDd_SetsIndexNumberToDateInt()
+    {
+        // Create an uninitialized Plugin instance (skips constructor that needs Jellyfin infra)
+        #pragma warning disable SYSLIB0050
+        var plugin = (Plugin)FormatterServices.GetUninitializedObject(typeof(Plugin));
+        #pragma warning restore SYSLIB0050
+
+        // Set Plugin.Instance via the private static setter
+        var instanceProperty = typeof(Plugin).GetProperty(
+            "Instance", BindingFlags.Static | BindingFlags.Public);
+        instanceProperty!.GetSetMethod(true)!.Invoke(null, new object?[] { plugin });
+
+        // Create PluginConfiguration (works now because Plugin.Instance != null)
+        // and set the numbering scheme to YYYYMMDD.
+        var config = new PluginConfiguration
+        {
+            EpisodeNumberingScheme = NumberingScheme.YYYYMMDD
+        };
+
+        // Set the private _configuration backing field in BasePlugin<T> via reflection.
+        Type? t = typeof(Plugin);
+        FieldInfo? configField = null;
+        while (t != null)
+        {
+            configField = t.GetField("_configuration", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (configField != null)
+            {
+                break;
+            }
+
+            t = t.BaseType;
+        }
+
+        configField!.SetValue(plugin, config);
+
+        try
+        {
+            var episode = LoadVideo().ToEpisode();
+            // Video fixture published date is 2025-08-04 → 20250804
+            Assert.Equal(20250804, episode.IndexNumber);
+        }
+        finally
+        {
+            // Restore Plugin.Instance to null so other tests see the Default scheme.
+            instanceProperty!.GetSetMethod(true)!.Invoke(null, new object?[] { null });
+        }
     }
 }

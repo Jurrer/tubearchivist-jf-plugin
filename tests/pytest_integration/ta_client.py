@@ -144,9 +144,9 @@ def get_watched(token: str, item_id: str) -> bool:
 
 def create_custom_playlist(token: str, name: str) -> dict[str, Any]:
     resp = requests.post(
-        f"{TA_URL}/api/playlist/",
+        f"{TA_URL}/api/playlist/custom/",
         headers=_headers(token),
-        data=json.dumps({"playlist_name": name, "playlist_type": "custom"}),
+        data=json.dumps({"playlist_name": name}),
         timeout=10,
     )
     resp.raise_for_status()
@@ -164,7 +164,7 @@ def delete_playlist(token: str, playlist_id: str) -> None:
 
 def custom_playlist_action(token: str, playlist_id: str, action: str, video_id: str) -> None:
     resp = requests.post(
-        f"{TA_URL}/api/playlist/{playlist_id}/",
+        f"{TA_URL}/api/playlist/custom/{playlist_id}/",
         headers=_headers(token),
         data=json.dumps({"action": action, "video_id": video_id}),
         timeout=10,

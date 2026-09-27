@@ -28,7 +28,63 @@ import requests
 from . import jf_client
 from . import ta_client
 
+
+# ---------------------------------------------------------------------------
+# Mutable token proxies — survive JF restarts by re-authenticating on demand
+# ---------------------------------------------------------------------------
+
+class _MutableToken:
+    """A string-like token holder that re-authenticates after invalidation.
+
+    Jellyfin access tokens are invalidated on every server restart.  The
+    integration suite restarts JF via _restart_jf() both for hermetic config
+    setup and for config_override blocks.  A session-scoped fixture returning a
+    raw ``str`` would go stale after the first restart and cause 401 cascades.
+
+    _MutableToken wraps the token in a proxy whose value is refreshed lazily
+    on first access (or re-access after invalidate()).  It delegates
+    ``__str__``, ``__hash__``, ``__eq__``, and ``__bool__`` so it is
+    transparently usable anywhere a ``str`` is expected — particularly in
+    ``jf_client._auth_header`` which does ``token in _token_device_ids`` and
+    ``f'"Token="{token}"'``.
+    """
+
+    def __init__(self, user: str, pw: str) -> None:
+        self._user = user
+        self._pw = pw
+        self._value: str = ""
+
+    def invalidate(self) -> None:
+        self._value = ""
+
+    def _ensure(self) -> str:
+        if not self._value:
+            self._value = jf_client.authenticate(self._user, self._pw)
+        return self._value
+
+    def __str__(self) -> str:
+        return self._ensure()
+
+    def __repr__(self) -> str:
+        return repr(self._ensure())
+
+    def __eq__(self, other: object) -> bool:
+        return self._ensure() == other
+
+    def __hash__(self) -> int:
+        return hash(self._ensure())
+
+    def __bool__(self) -> bool:
+        return True
+
+
+# Module-level singletons — invalidated by _restart_jf().
+_admin_token_ref = _MutableToken(jf_client.ADMIN_USER, jf_client.ADMIN_PASS)
+_test_user_token_ref = _MutableToken(jf_client.TEST_USER, jf_client.TEST_PASS)
+
+
 # The plugin config XML on disk (dev JF 10.11).
+
 CONFIG_XML = (
     Path(__file__).resolve().parents[3]
     / "dev-jellyfin"
@@ -109,14 +165,15 @@ def ta_token() -> str:
 
 @pytest.fixture(scope="session")
 def admin_token(hermetic_config: Any) -> str:
-    # Authenticate AFTER hermetic_config has restarted JF with the test config,
-    # so the token is valid for the rest of the session.
-    return jf_client.authenticate(jf_client.ADMIN_USER, jf_client.ADMIN_PASS)
+    # Returns a _MutableToken proxy that auto-refreshes after JF restarts.
+    # The proxy authenticates lazily on first use (or after invalidation).
+    return _admin_token_ref
 
 
 @pytest.fixture(scope="session")
 def test_user_token(hermetic_config: Any) -> str:
-    return jf_client.authenticate(jf_client.TEST_USER, jf_client.TEST_PASS)
+    # Returns a _MutableToken proxy that auto-refreshes after JF restarts.
+    return _test_user_token_ref
 
 
 @pytest.fixture(scope="session")
@@ -196,6 +253,10 @@ def _resolve_ta_key() -> str:
 
 def _restart_jf() -> None:
     import subprocess
+
+    # Invalidate cached tokens before restart — JF tokens don't survive restart.
+    _admin_token_ref.invalidate()
+    _test_user_token_ref.invalidate()
 
     subprocess.run(
         ["docker", "restart", "jf-plugin-dev"],
@@ -308,7 +369,10 @@ def config_override() -> Any:
         CONFIG_XML.write_text(modified)
         _restart_jf()
         try:
-            yield
+            # Yield a fresh admin token string valid for the new JF session.
+            # Tests use this inside the `with` block instead of the (now stale)
+            # session-scoped admin_token proxy.
+            yield str(_admin_token_ref)
         finally:
             CONFIG_XML.write_text(original)
             _restart_jf()
