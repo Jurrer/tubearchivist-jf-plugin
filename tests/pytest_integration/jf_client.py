@@ -73,13 +73,34 @@ def get_user_by_name(token: str, name: str) -> dict[str, Any] | None:
 
 
 def get_items(token: str, parent_id: str | None = None, **params: Any) -> dict[str, Any]:
-    p: dict[str, Any] = {"Recursive": True}
+    """Get items from JF, walking all API pages.
+
+    JF paginates /Items by default (returns a subset with
+    TotalRecordCount). We walk StartIndex/Limit to collect everything.
+    """
+    import time
+
+    p: dict[str, Any] = {"Recursive": True, "Limit": 200}
     p.update(params)
     if parent_id:
         p["ParentId"] = parent_id
-    resp = requests.get(f"{JF_URL}/Items", params=p, headers=_auth_header(token), timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+
+    all_items: list[dict[str, Any]] = []
+    start = 0
+    total = 1  # placeholder to enter loop
+    while start < total:
+        p["StartIndex"] = start
+        resp = requests.get(f"{JF_URL}/Items", params=p, headers=_auth_header(token), timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("Items", [])
+        all_items.extend(items)
+        total = data.get("TotalRecordCount", 0)
+        start += len(items)
+        if not items:
+            break
+
+    return {"Items": all_items, "TotalRecordCount": total}
 
 
 def get_item(token: str, item_id: str) -> dict[str, Any]:
@@ -190,6 +211,17 @@ def wait_for_task(token: str, task_id: str, timeout: int = 120) -> None:
 
     deadline = time.time() + timeout
     trigger_task(token, task_id)
+    # Wait for the task to actually enter Running state before checking
+    # for completion. Without this, the poll can see "Idle" (task hasn't
+    # started yet) and return prematurely.
+    start_deadline = time.time() + 15
+    while time.time() < start_deadline:
+        tasks = {t["Id"]: t for t in get_scheduled_tasks(token)}
+        state = tasks.get(task_id, {}).get("State")
+        if state == "Running":
+            break
+        time.sleep(0.5)
+    # Now wait for the task to finish (leave Running state).
     while time.time() < deadline:
         tasks = {t["Id"]: t for t in get_scheduled_tasks(token)}
         state = tasks.get(task_id, {}).get("State")
@@ -239,16 +271,25 @@ def get_collection_id_by_name(token: str, name: str) -> str | None:
 
 
 def get_playlists(token: str, user_id: str) -> list[dict[str, Any]]:
-    resp = requests.get(
-        f"{JF_URL}/Users/{user_id}/Views",
-        params={"IncludeItemTypes": "Playlist"},
-        headers=_auth_header(token),
-        timeout=10,
-    )
-    resp.raise_for_status()
-    # Playlists live under /Items with IncludeItemTypes
-    data = get_items(token, IncludeItemTypes="Playlist", Recursive=True)
-    return data.get("Items", [])
+    """Get all playlists visible to a user, walking all API pages."""
+    all_items: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        resp = requests.get(
+            f"{JF_URL}/Users/{user_id}/Items",
+            params={"IncludeItemTypes": "Playlist", "Recursive": True, "StartIndex": start, "Limit": 200},
+            headers=_auth_header(token),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("Items", [])
+        all_items.extend(items)
+        total = data.get("TotalRecordCount", 0)
+        start += len(items)
+        if not items or start >= total:
+            break
+    return all_items
 
 
 def get_playlist(token: str, playlist_id: str) -> dict[str, Any]:

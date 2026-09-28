@@ -16,9 +16,11 @@ Fixtures:
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
@@ -222,8 +224,9 @@ def hermetic_config(ta_token: str) -> Any:
 
 def _jf_api_ready(timeout: int = 90) -> bool:
     """Wait for JF to be fully ready — /Health 200 AND an authenticated
-    /Users call succeeds. JF returns 200 on /Health before the library
-    subsystem is ready for API calls (returns 503 on /Library/*).
+    /ScheduledTasks call succeeds. JF returns 200 on /Health before the
+    scheduled-tasks subsystem is ready (returns 503 or 401 on
+    /ScheduledTasks for several seconds after /Health comes up).
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -231,11 +234,26 @@ def _jf_api_ready(timeout: int = 90) -> bool:
             if requests.get(f"{jf_client.JF_URL}/Health", timeout=3).status_code != 200:
                 time.sleep(2)
                 continue
-            # Authenticated endpoint must succeed — proves the full
-            # request pipeline is up, not just Kestrel.
-            token = jf_client.authenticate(jf_client.ADMIN_USER, jf_client.ADMIN_PASS)
-            jf_client.get_users(token)
-            time.sleep(2)  # let the plugin finish initializing
+            # /ScheduledTasks is the last subsystem to come online.
+            # Polling it (not just /Users) proves the full request
+            # pipeline — including the plugin's scheduled tasks — is up.
+            # Use a unique device ID so re-authenticating here does NOT
+            # invalidate the session-scoped admin_token used by tests
+            # (same device ID would kick the previous session off).
+            probe_token = requests.post(
+                f"{jf_client.JF_URL}/Users/AuthenticateByName",
+                headers={
+                    "X-Emby-Authorization": (
+                        f'MediaBrowser Client="TAMetaTests", Device="probe", '
+                        f'DeviceId="tameta-probe-{uuid.uuid4()}", Version="1.0.0", '
+                        f'UserName="{jf_client.ADMIN_USER}"'
+                    ),
+                    "Content-Type": "application/json",
+                },
+                data=json.dumps({"Username": jf_client.ADMIN_USER, "Pw": jf_client.ADMIN_PASS}),
+                timeout=10,
+            ).json()["AccessToken"]
+            jf_client.get_scheduled_tasks(probe_token)
             return True
         except Exception:
             time.sleep(2)

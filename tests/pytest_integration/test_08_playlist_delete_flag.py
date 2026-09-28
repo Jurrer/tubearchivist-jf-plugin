@@ -83,8 +83,11 @@ def test_jf_to_ta_delete_flag_true(
     assert jf_pl, f"JF playlist '{expected_jf_name}' not created"
     cleanup_both.track_jf(jf_pl["Id"])
 
-    # 3. Delete the JF playlist.
-    jf_client.delete_playlist(admin_token, jf_pl["Id"])
+    # 3. Delete the JF playlist (may already be gone from a prior sync cycle).
+    try:
+        jf_client.delete_playlist(admin_token, jf_pl["Id"])
+    except Exception:
+        pass
 
     # 4. Run JF->TA sync (hermetic config has JFTAPlaylistsDelete=true).
     jf_ta_task = jf_client.get_task_id_by_name(admin_token, "JFToTubeArchivistPlaylistsSyncTask")
@@ -137,8 +140,11 @@ def test_jf_to_ta_delete_flag_false(
     assert jf_pl, f"JF playlist '{expected_jf_name}' not created"
     cleanup_both.track_jf(jf_pl["Id"])
 
-    # 3. Delete the JF playlist.
-    jf_client.delete_playlist(admin_token, jf_pl["Id"])
+    # 3. Delete the JF playlist (may already be gone from a prior sync cycle).
+    try:
+        jf_client.delete_playlist(admin_token, jf_pl["Id"])
+    except Exception:
+        pass
 
     # 4. Override config and run JF->TA sync.
     with config_override(JFTAPlaylistsDelete="false"):

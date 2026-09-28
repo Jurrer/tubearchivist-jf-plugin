@@ -179,10 +179,11 @@ def test_playlist_sync_respects_collection_boundary(
         jf_client.wait_for_task(admin_token, task_id, timeout=180)
         logs = jf_logs(1000)
 
-        # The plugin should log an error about the non-TA-provider video.
+        # The plugin should log about the non-TA-provider video being skipped.
         # (Outside-boundary items don't have TubeArchivist provider ids.)
-        assert "error" in logs.lower() or "provider" in logs.lower(), \
-            "Expected error log for outside-boundary item in playlist sync"
+        # The log may be at INF/WRN level, not necessarily ERROR.
+        assert "not tubearchivist" in logs.lower() or "provider" in logs.lower() or "skipped" in logs.lower(), \
+            "Expected log for outside-boundary item being skipped in playlist sync"
     finally:
         try:
             jf_client.delete_playlist(admin_token, jf_pl["Id"])
